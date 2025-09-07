@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Connect 4 — Duel (Stopwatch)</title>
+  <style>
+    :root{
+      --bg:#0f1320;
+      --card:#171b2b;
+      --accent:#ffd54d;
+      --p1:#ff6b6b;
+      --p2:#4dd0e1;
+      --text:#eef2ff;
+      --muted:#9aa4b2;
+      --win:#78e08f;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
+      background:linear-gradient(180deg,#0e1220, #10162c 60%, #0b0f1c);
+      color:var(--text);
+      display:flex;flex-direction:column;align-items:center;
+    }
+    header{width:100%;max-width:900px;padding:16px 16px 8px;}
+    .title{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    h1{font-size:22px;margin:0}
+    .badge{background:rgba(255,255,255,.08);padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
+    .card{
+      width:100%;max-width:900px;background:var(--card);border-radius:16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      padding:14px;margin:8px 16px;
+    }
+    .setup{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;}
+    .field{display:flex;flex-direction:column;gap:6px}
+    label{font-size:12px;color:var(--muted)}
+    input, button{
+      width:100%;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:12px;
+      background:#0f1426;color:#eef2ff;font-size:16px;outline:none;
+    }
+    .row{display:flex;gap:10px}
+    .btn{cursor:pointer;border:none;background:linear-gradient(180deg,#1c2450,#161c3d);border:1px solid rgba(255,255,255,.08);transition:transform .05s ease}
+    .btn:active{transform:translateY(1px)}
+    .btn-accent{background:linear-gradient(180deg,#ffd54d,#ffb300);color:#222;font-weight:700}
+    .btn-danger{background:linear-gradient(180deg,#ef5350,#e53935)}
+    .btn-ghost{background:#0f1426}
+    .tiny{font-size:12px;padding:10px}
+    .pill{border-radius:999px}
+    .game-wrapper{display:grid;grid-template-columns:1fr;gap:12px; align-items:start;}
+    .statusbar{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;}
+    .turn{font-weight:700}
+    .timer{font-variant-numeric:tabular-nums;padding:10px 14px;border-radius:10px;background:#0f1426;border:1px solid rgba(255,255,255,.08);}
+    .grid-wrap{background:linear-gradient(180deg,#14204b,#0d1640);border-radius:18px;padding:12px;border:1px solid rgba(255,255,255,.1);}
+    .board{--cols:7; --rows:6; display:grid; grid-template-columns: repeat(var(--cols), minmax(0,1fr)); gap:10px; width:100%; aspect-ratio: 7/6; touch-action: manipulation;}
+    .cell{position:relative;background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.1), rgba(255,255,255,0) 60%);border-radius:12px;border:1px solid rgba(255,255,255,.08);overflow:hidden;}
+    .slot{position:absolute; inset:8px;background: radial-gradient(circle at 50% 40%, #0b1022 0%, #070b19 60%);border-radius:50%;box-shadow: inset 0 4px 10px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;}
+    .disc{width:0;height:0;border-radius:50%;transition: all .2s ease;box-shadow: inset 0 6px 12px rgba(255,255,255,.25), inset 0 -8px 12px rgba(0,0,0,.4);}
+    .disc.show{width:100%;height:100%}
+    .p1{background: radial-gradient(circle at 50% 30%, #ff8a80, var(--p1))}
+    .p2{background: radial-gradient(circle at 50% 30%, #80e9f2, var(--p2))}
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    .legend{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+    .dot{width:12px;height:12px;border-radius:50%}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .stat-card{background:#0f1426;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;}
+    .stat-card h3{margin:0 0 6px 0;font-size:14px;color:var(--muted);font-weight:600}
+    .big{font-size:24px;font-weight:800}
+    .sub{font-size:12px;color:var(--muted)}
+    .winner{animation: pulse 1.2s ease infinite;}
+    @keyframes pulse{
+      0%{box-shadow:0 0 0 0 rgba(120,224,143,.6)}
+      70%{box-shadow:0 0 0 14px rgba(120,224,143,0)}
+      100%{box-shadow:0 0 0 0 rgba(120,224,143,0)}
+    }
+    footer{opacity:.65;font-size:12px;margin:10px 0 24px}
+    @media (max-width: 700px){
+      .setup{grid-template-columns:1fr}
+      .stats{grid-template-columns:1fr}
+      .statusbar{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <h1>Connect 4 — Duel</h1>
+      <span class="badge">Stopwatch mode</span>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="setup">
+      <div class="field">
+        <label for="p1">Player 1 (Red)</label>
+        <input id="p1" placeholder="Your name" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label for="p2">Player 2 (Teal)</label>
+        <input id="p2" placeholder="Fiancé's name" autocomplete="name" />
+      </div>
+      <div class="row">
+        <button class="btn btn-accent pill" id="startBtn">Start New Game</button>
+        <button class="btn pill tiny btn-ghost" id="swapBtn" title="Swap starting player">Swap Start</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card game-wrapper">
+    <div class="statusbar">
+      <div class="turn" id="turnLabel">Enter names & press Start</div>
+      <div class="timer" id="timer">00:00</div>
+    </div>
+    <div class="grid-wrap">
+      <div class="board" id="board" aria-label="Connect 4 board"></div>
+    </div>
+    <div class="controls">
+      <button class="btn tiny pill" id="undoBtn">Undo</button>
+      <button class="btn tiny pill" id="resetBtn">Reset Board</button>
+      <button class="btn tiny pill btn-danger" id="resignBtn">Resign</button>
+      <span class="sub" id="hint">Tap a column to drop your disc</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="stats" id="statsPanel"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn tiny pill" id="clearPairStats">Clear Head-to-Head</button>
+      <button class="btn tiny pill" id="clearAllStats">Clear All Players</button>
+    </div>
+  </section>
+
+  <footer>Tip: Add this page to your Home Screen for a full-screen feel.</footer>
+
+<script>
+(function(){
+  const COLS=7, ROWS=6;
+  const boardEl = document.getElementById('board');
+  const timerEl = document.getElementById('timer');
+  const turnLabel = document.getElementById('turnLabel');
+  const hintEl = document.getElementById('hint');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const resignBtn = document.getElementById('resignBtn');
+  const swapBtn = document.getElementById('swapBtn');
+  const statsPanel = document.getElementById('statsPanel');
+  const p1Input = document.getElementById('p1');
+  const p2Input = document.getElementById('p2');
+  const clearPairBtn = document.getElementById('clearPairStats');
+  const clearAllBtn = document.getElementById('clearAllStats');
+
+  const LS_KEY='connect4_duel_stats_v2';
+  const LS_STARTER='connect4_duel_starter';
+
+  let grid, moves, current, running=false, ticker=null, startTs=null, elapsed=0, starter=1;
+  let names = {1:'Player 1', 2:'Player 2'};
+  let pairKey='';
+
+  function init(){
+    boardEl.style.setProperty('--cols', COLS);
+    boardEl.style.setProperty('--rows', ROWS);
+    boardEl.innerHTML = '';
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const cell=document.createElement('div');
+        cell.className='cell';
+        const slot=document.createElement('div');
+        slot.className='slot';
+        const disc=document.createElement('div');
+        disc.className='disc';
+        slot.appendChild(disc);
+        cell.appendChild(slot);
+        cell.dataset.col=c;
+        boardEl.appendChild(cell);
+      }
+    }
+    boardEl.addEventListener('click', onBoardTap);
+    undoBtn.addEventListener('click', onUndo);
+    resetBtn.addEventListener('click', onReset);
+    resignBtn.addEventListener('click', onResign);
+    startBtn.addEventListener('click', startGame);
+    swapBtn.addEventListener('click', () => {
+      starter = starter===1?2:1;
+      saveStarter();
+      announce(`Next game: ${starter===1?names[1]:names[2]} starts`);
+    });
+    clearPairBtn.addEventListener('click', () => { if(confirm('Clear head-to-head stats for these two players?')){ clearPairStats(); renderStats(); } });
+    clearAllBtn.addEventListener('click', () => { if(confirm('Clear ALL saved players and stats?')){ localStorage.removeItem(LS_KEY); renderStats(); } });
+
+    const savedStarter = localStorage.getItem(LS_STARTER);
+    if(savedStarter) starter = Number(savedStarter);
+
+    loadNamesFromInputs();
+    newBoard();
+    renderStats();
+  }
+
+  function saveStarter(){ localStorage.setItem(LS_STARTER, String(starter)); }
+
+  function loadNamesFromInputs(){
+    names[1] = (p1Input.value || 'Player 1').trim();
+    names[2] = (p2Input.value || 'Player 2').trim();
+    pairKey = pairId(names[1], names[2]);
+  }
+
+  function pairId(a,b){
+    const n1=a.toLowerCase().trim(), n2=b.toLowerCase().trim();
+    return [n1,n2].sort().join(' vs ');
+  }
+
+  function newBoard(){
+    grid = Array.from({length:ROWS},()=>Array(COLS).fill(0));
+    moves = [];
+    current = starter;
+    running=false;
+    stopTicker();
+    elapsed = 0; startTs=null;
+    updateTimerLabel(0);
+    updateTurnLabel();
+    renderGrid();
+  }
+
+  function startGame(){
+    loadNamesFromInputs();
+    newBoard();
+    running=true;
+    startTs=Date.now();
+    startTicker();
+    announce(`${names[current]} to move`);
+    renderStats();
+  }
+
+  function onReset(){
+    if(confirm('Reset the board (no result recorded)?')) newBoard();
+  }
+
+  function onResign(){
+    if(!running){ announce('No active game.'); return; }
+    const loser=current;
+    const winner = other(current);
+    endGame({winner, reason:'resign'});
+  }
+
+  function onUndo(){
+    if(!moves.length || !running) return;
+    const last = moves.pop();
+    grid[last.row][last.col]=0;
+    current = last.player;
+    animateGrid();
+    updateTurnLabel();
+  }
+
+  function onBoardTap(e){
+    if(!running){ announce('Tap "Start New Game" to begin.'); return; }
+    const col = e.target.closest('.cell')?.dataset.col;
+    if(col==null) return;
+    dropDisc(Number(col));
+  }
+
+  function dropDisc(col){
+    for(let r=ROWS-1;r>=0;r--){
+      if(grid[r][col]===0){
+        grid[r][col]=current;
+        moves.push({row:r,col,player:current});
+        animateCell(r,col,current);
+        if(checkWin(r,col,current)){
+          endGame({winner:current, reason:'connect4'});
+        }else if(isDraw()){
+          endGame({winner:0, reason:'draw'});
+        }else{
+          current = other(current);
+          updateTurnLabel();
+        }
+        return;
+      }
+    }
+    announce('That column is full.');
+  }
+
+  function other(p){ return p===1?2:1; }
+  function isDraw(){ return grid.every(row=>row.every(v=>v!==0)); }
+
+  function checkWin(r,c,p){
+    const dirs=[[0,1],[1,0],[1,1],[1,-1]];
+    for(const [dr,dc] of dirs){
+      let count=1;
+      count += countDir(r,c,dr,dc,p);
+      count += countDir(r,c,-dr,-dc,p);
+      if(count>=4) return true;
+    }
+    return false;
+  }
+  function countDir(r,c,dr,dc,p){
+    let cnt=0, nr=r+dr, nc=c+dc;
+    while(nr>=0 && nr<ROWS && nc>=0 && nc<COLS && grid[nr][nc]===p){
+      cnt++; nr+=dr; nc+=dc;
+    }
+    return cnt;
+  }
+
+  function updateTurnLabel(){
+    const name = names[current];
+    turnLabel.textContent = running ? `${name}'s turn` : `Enter names & press Start`;
+  }
+
+  function renderGrid(){
+    const discs = boardEl.querySelectorAll('.disc');
+    discs.forEach(d=>{d.className='disc'});
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const idx=r*COLS+c;
+        const disc=discs[idx];
+        const v=grid[r][c];
+        if(v!==0){
+          disc.classList.add('show', v===1?'p1':'p2');
+        }
+      }
+    }
+  }
+  function animateGrid(){ renderGrid(); }
+  function animateCell(r,c,player){
+    const idx=r*COLS+c;
+    const disc=boardEl.querySelectorAll('.disc')[idx];
+    disc.className='disc show ' + (player===1?'p1':'p2');
+  }
+
+  // Stopwatch
+  function startTicker(){
+    stopTicker();
+    ticker = setInterval(()=>{
+      elapsed = Math.floor((Date.now()-startTs)/1000);
+      updateTimerLabel(elapsed);
+    }, 250);
+  }
+  function stopTicker(){ if(ticker){ clearInterval(ticker); ticker=null; } }
+  function updateTimerLabel(secs){
+    const m = Math.floor(secs/60);
+    const s = secs%60;
+    timerEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  // Stats store
+  function getStore(){
+    try{ return JSON.parse(localStorage.getItem(LS_KEY)||'{}'); }catch(e){ return {}; }
+  }
+  function setStore(obj){ localStorage.setItem(LS_KEY, JSON.stringify(obj)); }
+  function ensurePlayer(store, name){
+    if(!store.players) store.players={};
+    if(!store.players[name]) store.players[name]={games:0,wins:0,losses:0,draws:0,streak:0,bestStreak:0,totalDuration:0};
+  }
+  function ensurePair(store, key){
+    if(!store.pairs) store.pairs={};
+    if(!store.pairs[key]) store.pairs[key]={
+      games:0, [names[1]]:{wins:0}, [names[2]]:{wins:0}, draws:0,
+      durations:[], lastDuration:0
+    };
+  }
+
+  function recordResult({winner, reason, duration}){
+    const store=getStore();
+    ensurePlayer(store, names[1]); ensurePlayer(store, names[2]);
+    ensurePair(store, pairKey);
+
+    store.players[names[1]].games++;
+    store.players[names[2]].games++;
+    store.players[names[1]].totalDuration += duration;
+    store.players[names[2]].totalDuration += duration;
+
+    store.pairs[pairKey].games++;
+    store.pairs[pairKey].lastDuration = duration;
+    store.pairs[pairKey].durations.push(duration);
+    if(store.pairs[pairKey].durations.length>100) store.pairs[pairKey].durations.shift();
+
+    if(winner===0){
+      store.players[names[1]].draws++;
+      store.players[names[2]].draws++;
+      store.players[names[1]].streak = 0;
+      store.players[names[2]].streak = 0;
+      store.pairs[pairKey].draws = (store.pairs[pairKey].draws||0)+1;
+    }else{
+      const loser = other(winner);
+      const wName = names[winner];
+      const lName = names[loser];
+      store.players[wName].wins++;
+      store.players[lName].losses++;
+      store.players[wName].streak = Math.max(1, (store.players[wName].streak||0)+1);
+      store.players[wName].bestStreak = Math.max(store.players[wName].bestStreak||0, store.players[wName].streak);
+      store.players[lName].streak = 0;
+      store.pairs[pairKey][wName].wins = (store.pairs[pairKey][wName].wins||0)+1;
+      if(!store.pairs[pairKey][lName]) store.pairs[pairKey][lName]={wins:0};
+    }
+
+    setStore(store);
+    renderStats();
+  }
+
+  function clearPairStats(){
+    const store=getStore();
+    if(store.pairs && store[pairKey]){
+      delete store[pairs][pairKey];
+      setStore(store);
+    }else if(store.pairs && store.pairs[pairKey]){
+      delete store.pairs[pairKey];
+      setStore(store);
+    }
+  }
+
+  function fmt(secs){
+    const m = Math.floor(secs/60);
+    const s = secs%60;
+    return `${m}m ${String(s).padStart(2,'0')}s`;
+  }
+
+  function avg(arr){ if(!arr.length) return 0; return Math.round(arr.reduce((a,b)=>a+b,0)/arr.length); }
+  function winRate(p){ const g=p.games||0; const w=p.wins||0; return g? Math.round((w/g)*100):0; }
+  function avgDuration(p){ const g=p.games||0; const t=p.totalDuration||0; return g? Math.round(t/g):0; }
+
+  function renderStats(){
+    loadNamesFromInputs();
+    const store=getStore();
+    ensurePlayer(store, names[1]); ensurePlayer(store, names[2]);
+    ensurePair(store, pairKey);
+    const p1=store.players[names[1]], p2=store.players[names[2]];
+    const pair=store.pairs[pairKey];
+    const pairAvg = avg(pair.durations||[]);
+
+    statsPanel.innerHTML = `
+      <div class="stat-card">
+        <h3>${names[1]} (Red)</h3>
+        <div class="big">${p1.wins}-${p1.losses}-${p1.draws} <span class="sub">W-L-D</span></div>
+        <div class="sub">Win rate: ${winRate(p1)}% • Avg game: ${fmt(avgDuration(p1))}</div>
+      </div>
+      <div class="stat-card">
+        <h3>${names[2]} (Teal)</h3>
+        <div class="big">${p2.wins}-${p2.losses}-${p2.draws} <span class="sub">W-L-D</span></div>
+        <div class="sub">Win rate: ${winRate(p2)}% • Avg game: ${fmt(avgDuration(p2))}</div>
+      </div>
+      <div class="stat-card" style="grid-column:1/-1">
+        <h3>Head-to-Head</h3>
+        <div class="big">${names[1]} ${pair[names[1]].wins||0} — ${pair[names[2]].wins||0} ${names[2]}</div>
+        <div class="sub">Games: ${pair.games||0} • Draws: ${pair.draws||0} • Last: ${fmt(pair.lastDuration||0)} • Avg: ${fmt(pairAvg||0)}</div>
+      </div>
+    `;
+  }
+
+  function endGame({winner, reason}){
+    if(!running) return;
+    running=false;
+    stopTicker();
+    const duration = Math.floor((Date.now()-startTs)/1000);
+    let msg='';
+    if(winner===0){
+      msg = `Draw by ${reason==='timeout'?'time':'stalemate'}! (${fmt(duration)})`;
+      announce(msg);
+    }else{
+      const wName = names[winner];
+      msg = `${wName} wins ${reason==='timeout'?'on time':'by connect 4'}! (${fmt(duration)})`;
+      winnerGlow(winner);
+      announce(msg);
+    }
+    recordResult({winner, reason, duration});
+    starter = other(starter);
+    saveStarter();
+  }
+
+  function winnerGlow(winner){
+    const wrap=document.querySelector('.grid-wrap');
+    wrap.classList.add('winner');
+    setTimeout(()=>wrap.classList.remove('winner'), 2000);
+  }
+
+  function announce(t){ hintEl.textContent=t; }
+
+  init();
+})();
+</script>
+</body>
+</html>
